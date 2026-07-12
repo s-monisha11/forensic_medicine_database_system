@@ -1,41 +1,65 @@
+import { useEffect, useState } from "react";
 import { StatCard } from "../../components/StatCard";
 import { DataTable } from "../../components/DataTable";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Users, Activity, Database, Shield, Server, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-
-const systemData = [
-  { metric: "Users", current: 28, max: 50 },
-  { metric: "Cases", current: 610, max: 1000 },
-  { metric: "Storage", current: 245, max: 500 },
-];
-
-const activeUsers = [
-  { name: "Dr. Sunil Perera", role: "JMO", status: "approved", lastActive: "Active now", sessions: 3 },
-  { name: "Dr. Ranil Jayawardena", role: "Medical Officer", status: "approved", lastActive: "5 min ago", sessions: 1 },
-  { name: "K. Mendis", role: "Clerical", status: "approved", lastActive: "15 min ago", sessions: 2 },
-  { name: "Dr. Nisha De Silva", role: "Medical Officer", status: "approved", lastActive: "1 hour ago", sessions: 1 },
-];
-
-const auditLogs = [
-  { timestamp: "2024-05-28 10:45", user: "Dr. Perera", action: "Generated MLR Report", module: "Court Reports" },
-  { timestamp: "2024-05-28 10:30", user: "admin", action: "Added new user", module: "User Management" },
-  { timestamp: "2024-05-28 10:15", user: "K. Mendis", action: "Updated patient record", module: "Patients" },
-  { timestamp: "2024-05-28 09:50", user: "Dr. Jayawardena", action: "Completed autopsy case", module: "Autopsy" },
-];
+import { api } from "../../../services/api";
 
 export function AdminDashboard() {
+  const [stats, setStats] = useState<any>({
+    totalPatients: 0,
+    totalCases: 0,
+    pendingCases: 0,
+    inProgressCases: 0,
+    completedCases: 0,
+    urgentCases: 0,
+    totalAutopsies: 0,
+    totalClinical: 0,
+    totalEvidence: 0,
+    totalReports: 0,
+    pendingReports: 0,
+    totalStaff: 0,
+    recentCases: [],
+    monthlyCases: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const data = await api.getDashboardStats();
+        setStats(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
+
   const columns = [
-    { key: "name", header: "User Name" },
-    { key: "role", header: "Role" },
+    { key: "case_number", header: "Case Number" },
+    { key: "patient_name", header: "Patient Name" },
+    { key: "case_type", header: "Type" },
+    { key: "incident_date", header: "Date", render: (v: string) => v ? v.split("T")[0] : "" },
+    { key: "assigned_staff_name", header: "Doctor" },
     {
       key: "status",
       header: "Status",
-      render: (value: string) => <StatusBadge status={value as any} />,
+      render: (value: string) => <StatusBadge status={value.toLowerCase().replace(" ", "_") as any} />,
     },
-    { key: "lastActive", header: "Last Active" },
-    { key: "sessions", header: "Active Sessions" },
   ];
+
+  const systemData = [
+    { metric: "Staff", current: stats.totalStaff, max: 50 },
+    { metric: "Cases", current: stats.totalCases, max: 100 },
+    { metric: "Evidence", current: stats.totalEvidence, max: 150 },
+  ];
+
+  if (loading) return <div className="text-center py-8 text-muted-foreground animate-pulse">Loading Admin Dashboard...</div>;
 
   return (
     <div className="space-y-6">
@@ -44,36 +68,38 @@ export function AdminDashboard() {
         <p className="text-muted-foreground">Complete system overview and management</p>
       </div>
 
+      {error && <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-destructive">{error}</div>}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Total Users"
-          value="28"
+          title="Total Staff"
+          value={String(stats.totalStaff)}
           icon={Users}
-          change="3 active now"
+          change="Registered personnel"
           changeType="increase"
           color="blue"
         />
         <StatCard
-          title="Active Sessions"
-          value="12"
+          title="Total Patients"
+          value={String(stats.totalPatients)}
           icon={Activity}
-          change="Peak: 18 today"
+          change="Registered patients"
           changeType="increase"
           color="green"
         />
         <StatCard
           title="Total Cases"
-          value="610"
+          value={String(stats.totalCases)}
           icon={Database}
-          change="+15 this week"
+          change={`${stats.pendingCases} pending`}
           changeType="increase"
           color="blue"
         />
         <StatCard
-          title="System Health"
-          value="98%"
+          title="Evidence Stored"
+          value={String(stats.totalEvidence)}
           icon={Server}
-          change="All systems operational"
+          change="In custody"
           changeType="increase"
           color="green"
         />
@@ -81,7 +107,7 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
-          <h3 className="text-card-foreground mb-4">System Resource Usage</h3>
+          <h3 className="text-card-foreground mb-4">System Metrics Overview</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={systemData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -95,8 +121,8 @@ export function AdminDashboard() {
                 }}
               />
               <Legend />
-              <Bar dataKey="current" fill="#3b82f6" name="Current" />
-              <Bar dataKey="max" fill="#94a3b8" name="Maximum" />
+              <Bar dataKey="current" fill="#3b82f6" name="Current Count" />
+              <Bar dataKey="max" fill="#94a3b8" name="Capacity Alert Threshold" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -104,7 +130,7 @@ export function AdminDashboard() {
         <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-primary" />
-            <h3 className="text-card-foreground">Security & Access</h3>
+            <h3 className="text-card-foreground">System Security & Health</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-success/10 rounded-lg">
@@ -116,46 +142,25 @@ export function AdminDashboard() {
             </div>
             <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div>
-                <p className="text-sm text-card-foreground">Database Backup</p>
-                <p className="text-xs text-muted-foreground">Last: 2 hours ago</p>
+                <p className="text-sm text-card-foreground">Database Status</p>
+                <p className="text-xs text-muted-foreground">Connected to MySQL</p>
               </div>
               <span className="text-primary">●</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div>
-                <p className="text-sm text-card-foreground">Failed Login Attempts</p>
-                <p className="text-xs text-muted-foreground">Last 24 hours</p>
+                <p className="text-sm text-card-foreground">Vite Development Server</p>
+                <p className="text-xs text-muted-foreground">Proxy enabled for /api</p>
               </div>
-              <span className="text-card-foreground">2</span>
+              <span className="text-card-foreground">OK</span>
             </div>
           </div>
         </div>
       </div>
 
       <div>
-        <h3 className="text-foreground mb-4">Active Users</h3>
-        <DataTable columns={columns} data={activeUsers} />
-      </div>
-
-      <div className="bg-card rounded-lg p-6 border border-border shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          <h3 className="text-card-foreground">Recent Audit Logs</h3>
-        </div>
-        <div className="space-y-2">
-          {auditLogs.map((log, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
-              <div className="flex-1">
-                <p className="text-card-foreground">
-                  <span className="font-medium">{log.user}</span> - {log.action}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {log.module} • {log.timestamp}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <h3 className="text-foreground mb-4">Recently Added Cases</h3>
+        <DataTable columns={columns} data={stats.recentCases} />
       </div>
     </div>
   );
