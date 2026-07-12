@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { FileText, Lock, User, ArrowLeft } from "lucide-react";
+import { api } from "../../services/api";
 
 export function Login() {
   const navigate = useNavigate();
@@ -8,15 +9,26 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Store user role in session storage for role-based access
-    if (role) {
-      sessionStorage.setItem("userRole", role);
-      sessionStorage.setItem("username", username);
+    setError("");
+    setLoading(true);
+    try {
+      // Mock login since backend is not connected
+      await new Promise(resolve => setTimeout(resolve, 500));
+      sessionStorage.setItem("token", "mock-token-123");
+      sessionStorage.setItem("userRole", role || "admin");
+      sessionStorage.setItem("username", username || "testuser");
+      sessionStorage.setItem("fullName", "Test User");
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
-    navigate("/dashboard");
   };
 
   return (
@@ -45,6 +57,12 @@ export function Login() {
             </p>
             <div className="w-16 h-1 bg-blue-600 rounded-full mt-4"></div>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
@@ -111,9 +129,10 @@ export function Login() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg disabled:opacity-50"
             >
-              Sign In
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 

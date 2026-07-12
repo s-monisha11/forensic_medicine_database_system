@@ -14,6 +14,11 @@ import { Search } from "./pages/Search";
 import { Analytics } from "./pages/Analytics";
 import { Staff } from "./pages/Staff";
 import { Settings } from "./pages/Settings";
+import { MasterData } from "./pages/MasterData";
+import { CaseOperations } from "./pages/CaseOperations";
+import { MedicalPostmortem } from "./pages/MedicalPostmortem";
+import { EvidenceLab } from "./pages/EvidenceLab";
+import { ReportsAudit } from "./pages/ReportsAudit";
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +47,11 @@ export const router = createBrowserRouter([
       { path: "search", Component: Search },
       { path: "analytics", Component: Analytics },
       { path: "staff", Component: Staff },
+      { path: "master-data", Component: MasterData },
+      { path: "case-operations", Component: CaseOperations },
+      { path: "medical-postmortem", Component: MedicalPostmortem },
+      { path: "evidence-lab", Component: EvidenceLab },
+      { path: "reports-audit", Component: ReportsAudit },
       { path: "settings", Component: Settings },
     ],
   },
