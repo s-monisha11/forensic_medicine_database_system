@@ -1,101 +1,105 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
-import { Plus, FileText, Upload, Eye, X, CheckCircle } from "lucide-react";
-
-interface ClinicalCase {
-  caseRef: string;
-  mlefNo: string;
-  patientName: string;
-  examDate: string;
-  policeStation: string;
-  injuryType: string;
-  status: string;
-}
+import { Plus, FileText, Eye, X, CheckCircle } from "lucide-react";
+import { api } from "../../services/api";
 
 export function ClinicalCases() {
-  const [cases, setCases] = useState<ClinicalCase[]>([
-    {
-      caseRef: "CLN-2024-156",
-      mlefNo: "MLEF-2024-789",
-      patientName: "W.M. Silva",
-      examDate: "2024-05-27",
-      policeStation: "Colombo Central",
-      injuryType: "Blunt Force Trauma",
-      status: "pending",
-    },
-    {
-      caseRef: "CLN-2024-155",
-      mlefNo: "MLEF-2024-788",
-      patientName: "S.A. Wijesuriya",
-      examDate: "2024-05-26",
-      policeStation: "Kandy",
-      injuryType: "Poisoning Suspected",
-      status: "in_progress",
-    },
-    {
-      caseRef: "CLN-2024-154",
-      mlefNo: "MLEF-2024-787",
-      patientName: "R.K. Mendis",
-      examDate: "2024-05-25",
-      policeStation: "Galle",
-      injuryType: "Sharp Weapon",
-      status: "completed",
-    },
-    {
-      caseRef: "CLN-2024-153",
-      mlefNo: "MLEF-2024-786",
-      patientName: "N.P. Gunasekara",
-      examDate: "2024-05-24",
-      policeStation: "Matara",
-      injuryType: "Firearm Injury",
-      status: "urgent",
-    },
-  ]);
+  const [cases, setCases] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCase, setSelectedCase] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [newCase, setNewCase] = useState({
-    patientName: "",
-    examDate: "",
-    policeStation: "",
-    injuryType: "",
-    notes: "",
+    patient_id: "",
+    incident_date: "",
+    police_station: "",
+    incident_location: "",
+    description: "",
+    assigned_staff_id: "",
   });
 
-  const handleAddCase = () => {
-    const caseNumber = cases.length + 1;
-    const clinicalCase: ClinicalCase = {
-      caseRef: `CLN-2024-${String(156 - caseNumber + 1).padStart(3, "0")}`,
-      mlefNo: `MLEF-2024-${String(789 - caseNumber + 1).padStart(3, "0")}`,
-      patientName: newCase.patientName,
-      examDate: newCase.examDate,
-      policeStation: newCase.policeStation,
-      injuryType: newCase.injuryType,
-      status: "pending",
-    };
+  // Stats
+  const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
 
-    setCases([clinicalCase, ...cases]);
-    setShowAddModal(false);
-    setShowSuccess(true);
-    setNewCase({ patientName: "", examDate: "", policeStation: "", injuryType: "", notes: "" });
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    setTimeout(() => setShowSuccess(false), 3000);
+  async function loadData() {
+    setLoading(true);
+    try {
+      const [casesData, patientsData, staffData] = await Promise.all([
+        api.getCases(),
+        api.getPatients(),
+        api.getStaff(),
+      ]);
+      const clinical = casesData.filter((c: any) => c.case_type === "Clinical");
+      setCases(clinical);
+      setPatients(patientsData);
+      setStaff(staffData);
+      setStats({
+        total: clinical.length,
+        pending: clinical.filter((c: any) => c.status === "Pending").length,
+        inProgress: clinical.filter((c: any) => c.status === "In Progress").length,
+        completed: clinical.filter((c: any) => c.status === "Completed").length,
+      });
+    } catch (err: any) {
+      setError(err.message || "Failed to load data.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleAddCase = async () => {
+    try {
+      await api.addCase({
+        patient_id: Number(newCase.patient_id),
+        case_type: "Clinical",
+        incident_date: newCase.incident_date,
+        police_station: newCase.police_station,
+        incident_location: newCase.incident_location,
+        description: newCase.description,
+        assigned_staff_id: newCase.assigned_staff_id ? Number(newCase.assigned_staff_id) : null,
+        status: "Pending",
+      });
+      setShowAddModal(false);
+      setShowSuccess(true);
+      setNewCase({ patient_id: "", incident_date: "", police_station: "", incident_location: "", description: "", assigned_staff_id: "" });
+      loadData();
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to create case.");
+    }
+  };
+
+  const statusMap: Record<string, string> = {
+    Pending: "pending",
+    "In Progress": "in_progress",
+    Completed: "completed",
+    Urgent: "urgent",
+    Closed: "completed",
   };
 
   const columns = [
-    { key: "caseRef", header: "Case Reference" },
-    { key: "mlefNo", header: "MLEF Number" },
-    { key: "patientName", header: "Patient Name" },
-    { key: "examDate", header: "Exam Date" },
-    { key: "policeStation", header: "Police Station" },
-    { key: "injuryType", header: "Type of Injury" },
+    { key: "case_number", header: "Case Reference" },
+    { key: "patient_name", header: "Patient Name" },
+    {
+      key: "incident_date",
+      header: "Exam Date",
+      render: (val: string) => (val ? val.split("T")[0] : ""),
+    },
+    { key: "police_station", header: "Police Station" },
+    { key: "assigned_staff_name", header: "Doctor" },
     {
       key: "status",
       header: "Status",
-      render: (value: string) => <StatusBadge status={value as any} />,
+      render: (value: string) => <StatusBadge status={(statusMap[value] || "pending") as any} />,
     },
     {
       key: "actions",
@@ -129,6 +133,13 @@ export function ClinicalCases() {
         </div>
       )}
 
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-destructive">
+          {error}
+          <button onClick={() => setError("")} className="ml-2 underline">Dismiss</button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-foreground mb-2">Clinical Case Management</h1>
@@ -146,221 +157,114 @@ export function ClinicalCases() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="bg-card rounded-lg p-4 border border-border">
           <p className="text-sm text-muted-foreground mb-1">Total Cases</p>
-          <p className="text-2xl text-card-foreground">423</p>
+          <p className="text-2xl text-card-foreground">{stats.total}</p>
         </div>
         <div className="bg-card rounded-lg p-4 border border-border">
           <p className="text-sm text-muted-foreground mb-1">Pending</p>
-          <p className="text-2xl text-warning">28</p>
+          <p className="text-2xl text-warning">{stats.pending}</p>
         </div>
         <div className="bg-card rounded-lg p-4 border border-border">
           <p className="text-sm text-muted-foreground mb-1">In Progress</p>
-          <p className="text-2xl text-primary">15</p>
+          <p className="text-2xl text-primary">{stats.inProgress}</p>
         </div>
         <div className="bg-card rounded-lg p-4 border border-border">
           <p className="text-sm text-muted-foreground mb-1">Completed</p>
-          <p className="text-2xl text-success">380</p>
+          <p className="text-2xl text-success">{stats.completed}</p>
         </div>
       </div>
 
-      <DataTable columns={columns} data={cases} />
+      {loading ? (
+        <div className="text-center py-8 text-muted-foreground animate-pulse">Loading cases...</div>
+      ) : (
+        <DataTable columns={columns} data={cases} />
+      )}
 
+      {/* View Details Modal */}
       {showModal && selectedCase && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-card">
               <h2 className="text-card-foreground">Clinical Case Details</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-muted-foreground hover:text-card-foreground"
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-card-foreground">✕</button>
             </div>
-
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Case Reference</p>
-                  <p className="text-card-foreground">{selectedCase.caseRef}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">MLEF Number</p>
-                  <p className="text-card-foreground">{selectedCase.mlefNo}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Patient Name</p>
-                  <p className="text-card-foreground">{selectedCase.patientName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Examination Date</p>
-                  <p className="text-card-foreground">{selectedCase.examDate}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Police Station</p>
-                  <p className="text-card-foreground">{selectedCase.policeStation}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <StatusBadge status={selectedCase.status} />
-                </div>
+                <div><p className="text-sm text-muted-foreground">Case Reference</p><p className="text-card-foreground">{selectedCase.case_number}</p></div>
+                <div><p className="text-sm text-muted-foreground">Patient Name</p><p className="text-card-foreground">{selectedCase.patient_name}</p></div>
+                <div><p className="text-sm text-muted-foreground">Incident Date</p><p className="text-card-foreground">{selectedCase.incident_date?.split("T")[0]}</p></div>
+                <div><p className="text-sm text-muted-foreground">Police Station</p><p className="text-card-foreground">{selectedCase.police_station}</p></div>
+                <div><p className="text-sm text-muted-foreground">Doctor</p><p className="text-card-foreground">{selectedCase.assigned_staff_name || "Not assigned"}</p></div>
+                <div><p className="text-sm text-muted-foreground">Status</p><StatusBadge status={(statusMap[selectedCase.status] || "pending") as any} /></div>
               </div>
-
-              <div>
-                <h3 className="text-card-foreground mb-3">Investigation Details</h3>
-                <div className="bg-muted rounded-lg p-4">
-                  <p className="text-sm text-card-foreground mb-2">
-                    <strong>Type of Injury:</strong> {selectedCase.injuryType}
-                  </p>
-                  <p className="text-sm text-card-foreground mb-2">
-                    <strong>Nature of Weapon:</strong> Blunt object (suspected)
-                  </p>
-                  <p className="text-sm text-card-foreground">
-                    <strong>Doctor Notes:</strong> Patient presented with multiple contusions on
-                    the upper limbs. X-ray examination revealed no fractures. Further observation
-                    required.
-                  </p>
+              {selectedCase.description && (
+                <div>
+                  <h3 className="text-card-foreground mb-3">Description</h3>
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-sm text-card-foreground">{selectedCase.description}</p>
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <h3 className="text-card-foreground mb-3">Evidence</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="border-2 border-dashed border-border rounded-lg p-4 text-center"
-                    >
-                      <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground">Evidence {i}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-                  <FileText className="w-4 h-4" />
-                  Generate Report
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
-                  <Upload className="w-4 h-4" />
-                  Upload Evidence
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
+      {/* Add Case Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-card">
               <h2 className="text-card-foreground">Create New Clinical Case</h2>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setNewCase({ patientName: "", examDate: "", policeStation: "", injuryType: "", notes: "" });
-                }}
-                className="text-muted-foreground hover:text-card-foreground"
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowAddModal(false)} className="text-muted-foreground hover:text-card-foreground">✕</button>
             </div>
-
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-muted-foreground mb-2">
-                    Patient Name <span className="text-destructive">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newCase.patientName}
-                    onChange={(e) => setNewCase({ ...newCase, patientName: e.target.value })}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-                    placeholder="Enter patient name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-muted-foreground mb-2">
-                    Examination Date <span className="text-destructive">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={newCase.examDate}
-                    onChange={(e) => setNewCase({ ...newCase, examDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-muted-foreground mb-2">
-                    Police Station <span className="text-destructive">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newCase.policeStation}
-                    onChange={(e) => setNewCase({ ...newCase, policeStation: e.target.value })}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-                    placeholder="Enter police station"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-muted-foreground mb-2">
-                    Type of Injury <span className="text-destructive">*</span>
-                  </label>
+                  <label className="block text-sm text-muted-foreground mb-2">Patient <span className="text-destructive">*</span></label>
                   <select
-                    value={newCase.injuryType}
-                    onChange={(e) => setNewCase({ ...newCase, injuryType: e.target.value })}
+                    value={newCase.patient_id}
+                    onChange={(e) => setNewCase({ ...newCase, patient_id: e.target.value })}
                     className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
                   >
-                    <option value="">Select injury type</option>
-                    <option>Blunt Force Trauma</option>
-                    <option>Sharp Weapon</option>
-                    <option>Firearm Injury</option>
-                    <option>Poisoning Suspected</option>
-                    <option>Burn Injury</option>
-                    <option>Sexual Assault</option>
-                    <option>Other</option>
+                    <option value="">Select patient</option>
+                    {patients.map((p: any) => (
+                      <option key={p.patient_id} value={p.patient_id}>{p.full_name} ({p.nic || 'No NIC'})</option>
+                    ))}
                   </select>
                 </div>
-
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-2">Incident Date <span className="text-destructive">*</span></label>
+                  <input type="date" value={newCase.incident_date} onChange={(e) => setNewCase({ ...newCase, incident_date: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background" />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-2">Police Station <span className="text-destructive">*</span></label>
+                  <input type="text" value={newCase.police_station} onChange={(e) => setNewCase({ ...newCase, police_station: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background" placeholder="Enter police station" />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-2">Assigned Doctor</label>
+                  <select value={newCase.assigned_staff_id} onChange={(e) => setNewCase({ ...newCase, assigned_staff_id: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background">
+                    <option value="">Select doctor</option>
+                    {staff.filter((s: any) => s.role === "JMO" || s.role === "Doctor").map((s: any) => (
+                      <option key={s.staff_id} value={s.staff_id}>{s.full_name}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="col-span-2">
-                  <label className="block text-sm text-muted-foreground mb-2">Notes</label>
-                  <textarea
-                    value={newCase.notes}
-                    onChange={(e) => setNewCase({ ...newCase, notes: e.target.value })}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
-                    rows={4}
-                    placeholder="Enter initial findings or notes..."
-                  />
+                  <label className="block text-sm text-muted-foreground mb-2">Description</label>
+                  <textarea value={newCase.description} onChange={(e) => setNewCase({ ...newCase, description: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background" rows={4} placeholder="Enter case description..." />
                 </div>
               </div>
             </div>
-
             <div className="p-6 border-t border-border flex gap-3">
-              <button
-                onClick={handleAddCase}
-                disabled={
-                  !newCase.patientName ||
-                  !newCase.examDate ||
-                  !newCase.policeStation ||
-                  !newCase.injuryType
-                }
-                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <button onClick={handleAddCase} disabled={!newCase.patient_id || !newCase.incident_date || !newCase.police_station}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 Create Case
               </button>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setNewCase({ patientName: "", examDate: "", policeStation: "", injuryType: "", notes: "" });
-                }}
-                className="px-6 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
-              >
+              <button onClick={() => setShowAddModal(false)} className="px-6 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
                 Cancel
               </button>
             </div>

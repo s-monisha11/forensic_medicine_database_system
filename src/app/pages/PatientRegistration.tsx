@@ -1,82 +1,105 @@
-import { useState } from "react";
-import { Save, RotateCcw, Search, Upload, User, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Save, RotateCcw, Search, Upload, User, X, Trash2 } from "lucide-react";
 import { DataTable } from "../components/DataTable";
-import { StatusBadge } from "../components/StatusBadge";
-
-interface Patient {
-  id: string;
-  fullName: string;
-  nic: string;
-  age: string;
-  gender: string;
-  address: string;
-  contactNumber: string;
-  hospitalBHT: string;
-  ward: string;
-  registeredDate: string;
-  status: string;
-}
+import { api } from "../../services/api";
 
 export function PatientRegistration() {
   const [formData, setFormData] = useState({
-    fullName: "",
+    full_name: "",
     nic: "",
     age: "",
     gender: "",
     address: "",
-    contactNumber: "",
-    hospitalBHT: "",
+    contact_no: "",
+    hospital_bht: "",
     ward: "",
   });
 
-  const [patients, setPatients] = useState<Patient[]>([
-    {
-      id: "P-001",
-      fullName: "W.M. Silva",
-      nic: "923456789V",
-      age: "35",
-      gender: "Male",
-      address: "123 Main St, Colombo",
-      contactNumber: "+94 77 123 4567",
-      hospitalBHT: "BHT-2024-001",
-      ward: "Ward 5",
-      registeredDate: "2024-05-27",
-      status: "completed",
-    },
-  ]);
-
+  const [patients, setPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  async function loadPatients() {
+    setLoading(true);
+    try {
+      const data = await api.getPatients();
+      setPatients(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load patients.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const newPatient: Patient = {
-      id: `P-${String(patients.length + 1).padStart(3, "0")}`,
-      ...formData,
-      registeredDate: new Date().toISOString().split("T")[0],
-      status: "completed",
-    };
-
-    setPatients([newPatient, ...patients]);
-    setShowSuccess(true);
-    handleReset();
-
-    setTimeout(() => setShowSuccess(false), 3000);
+    setError("");
+    try {
+      if (editId) {
+        await api.updatePatient(editId, formData);
+        setSuccessMessage("Patient updated successfully!");
+      } else {
+        await api.addPatient(formData);
+        setSuccessMessage("Patient registered successfully!");
+      }
+      setShowSuccess(true);
+      handleReset();
+      loadPatients();
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message || "Operation failed.");
+    }
   };
 
   const handleReset = () => {
+    setEditId(null);
     setFormData({
-      fullName: "",
+      full_name: "",
       nic: "",
       age: "",
       gender: "",
       address: "",
-      contactNumber: "",
-      hospitalBHT: "",
+      contact_no: "",
+      hospital_bht: "",
       ward: "",
     });
+  };
+
+  const handleEdit = (patient: any) => {
+    setEditId(patient.patient_id);
+    setFormData({
+      full_name: patient.full_name || "",
+      nic: patient.nic || "",
+      age: String(patient.age || ""),
+      gender: patient.gender || "",
+      address: patient.address || "",
+      contact_no: patient.contact_no || "",
+      hospital_bht: patient.hospital_bht || "",
+      ward: patient.ward || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this patient record?")) return;
+    try {
+      await api.deletePatient(id);
+      setSuccessMessage("Patient deleted successfully!");
+      setShowSuccess(true);
+      loadPatients();
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to delete patient.");
+    }
   };
 
   const handleSearch = () => {
@@ -88,24 +111,40 @@ export function PatientRegistration() {
   const filteredPatients = showSearchResults
     ? patients.filter(
         (p) =>
-          p.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.nic.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.hospitalBHT.toLowerCase().includes(searchQuery.toLowerCase())
+          (p.full_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.nic || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.hospital_bht || "").toLowerCase().includes(searchQuery.toLowerCase())
       )
     : patients;
 
   const columns = [
-    { key: "id", header: "Patient ID" },
-    { key: "fullName", header: "Full Name" },
+    { key: "patient_id", header: "Patient ID" },
+    { key: "full_name", header: "Full Name" },
     { key: "nic", header: "NIC" },
     { key: "age", header: "Age" },
     { key: "gender", header: "Gender" },
-    { key: "hospitalBHT", header: "BHT Number" },
-    { key: "registeredDate", header: "Registered Date" },
+    { key: "contact_no", header: "Contact No" },
+    { key: "hospital_bht", header: "BHT Number" },
+    { key: "ward", header: "Ward" },
     {
-      key: "status",
-      header: "Status",
-      render: (value: string) => <StatusBadge status={value as any} />,
+      key: "actions",
+      header: "Actions",
+      render: (_: any, row: any) => (
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleEdit(row)}
+            className="px-2 py-1 text-xs bg-primary/10 text-primary rounded hover:bg-primary/20"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleDelete(row.patient_id)}
+            className="p-1 text-destructive hover:bg-destructive/10 rounded"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -117,11 +156,18 @@ export function PatientRegistration() {
             <div className="bg-success rounded-full p-1">
               <User className="w-4 h-4 text-success-foreground" />
             </div>
-            <p className="text-success">Patient registered successfully!</p>
+            <p className="text-success">{successMessage}</p>
           </div>
           <button onClick={() => setShowSuccess(false)}>
             <X className="w-4 h-4 text-success" />
           </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-destructive">
+          {error}
+          <button onClick={() => setError("")} className="ml-2 underline">Dismiss</button>
         </div>
       )}
 
@@ -136,7 +182,7 @@ export function PatientRegistration() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
               placeholder="Search by name, NIC, or BHT..."
             />
@@ -163,6 +209,9 @@ export function PatientRegistration() {
       </div>
 
       <div className="bg-card rounded-lg border border-border shadow-sm p-6">
+        <h3 className="text-card-foreground mb-4">
+          {editId ? "Update Patient Record" : "Register New Patient"}
+        </h3>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -171,8 +220,8 @@ export function PatientRegistration() {
               </label>
               <input
                 type="text"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background text-card-foreground"
                 placeholder="Enter full name"
                 required
@@ -180,16 +229,13 @@ export function PatientRegistration() {
             </div>
 
             <div>
-              <label className="block text-card-foreground mb-2">
-                NIC Number <span className="text-destructive">*</span>
-              </label>
+              <label className="block text-card-foreground mb-2">NIC Number</label>
               <input
                 type="text"
                 value={formData.nic}
                 onChange={(e) => setFormData({ ...formData, nic: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background text-card-foreground"
                 placeholder="Enter NIC number"
-                required
               />
             </div>
 
@@ -218,9 +264,10 @@ export function PatientRegistration() {
                 required
               >
                 <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Unknown">Unknown</option>
               </select>
             </div>
 
@@ -239,8 +286,8 @@ export function PatientRegistration() {
               <label className="block text-card-foreground mb-2">Contact Number</label>
               <input
                 type="tel"
-                value={formData.contactNumber}
-                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                value={formData.contact_no}
+                onChange={(e) => setFormData({ ...formData, contact_no: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background text-card-foreground"
                 placeholder="Enter contact number"
               />
@@ -250,8 +297,8 @@ export function PatientRegistration() {
               <label className="block text-card-foreground mb-2">Hospital BHT Number</label>
               <input
                 type="text"
-                value={formData.hospitalBHT}
-                onChange={(e) => setFormData({ ...formData, hospitalBHT: e.target.value })}
+                value={formData.hospital_bht}
+                onChange={(e) => setFormData({ ...formData, hospital_bht: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background text-card-foreground"
                 placeholder="Enter BHT number"
               />
@@ -269,26 +316,13 @@ export function PatientRegistration() {
             </div>
           </div>
 
-          <div className="border-t border-border pt-6">
-            <h3 className="text-card-foreground mb-4">Upload Documents</h3>
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-              <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-2">
-                Click to upload or drag and drop
-              </p>
-              <p className="text-sm text-muted-foreground">
-                PDF, JPG, PNG up to 10MB
-              </p>
-            </div>
-          </div>
-
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
               className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
             >
               <Save className="w-4 h-4" />
-              Save Patient
+              {editId ? "Update Patient" : "Save Patient"}
             </button>
             <button
               type="button"
@@ -304,9 +338,13 @@ export function PatientRegistration() {
 
       <div>
         <h3 className="text-foreground mb-4">
-          {showSearchResults ? `Search Results (${filteredPatients.length})` : "Recently Registered Patients"}
+          {showSearchResults ? `Search Results (${filteredPatients.length})` : "Registered Patients"}
         </h3>
-        <DataTable columns={columns} data={filteredPatients} />
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground animate-pulse">Loading patients...</div>
+        ) : (
+          <DataTable columns={columns} data={filteredPatients} />
+        )}
       </div>
     </div>
   );

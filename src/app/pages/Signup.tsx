@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { FileText, Lock, User, Mail, Phone, ArrowLeft } from "lucide-react";
+import { api } from "../../services/api";
 
 export function Signup() {
   const navigate = useNavigate();
@@ -14,15 +15,32 @@ export function Signup() {
     confirmPassword: "",
     agreeTerms: false,
   });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
+      setError("Passwords do not match!");
       return;
     }
-    // In a real application, this would send data to the backend
-    navigate("/login");
+    setLoading(true);
+    try {
+      await api.signup({
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+        username: formData.username,
+        password: formData.password,
+      });
+      navigate("/login");
+    } catch (err: any) {
+      setError(err.message || "Signup failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,6 +67,12 @@ export function Signup() {
             </p>
             <div className="w-16 h-1 bg-blue-600 rounded-full mt-4"></div>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
@@ -195,9 +219,10 @@ export function Signup() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg disabled:opacity-50"
             >
-              Request Access
+              {loading ? "Creating Account..." : "Request Access"}
             </button>
           </form>
 
