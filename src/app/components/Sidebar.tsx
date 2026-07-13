@@ -39,6 +39,11 @@ const allNavItems: NavItem[] = [
   { to: "/dashboard/search", icon: Search, label: "Search & Retrieval", roles: ["admin", "jmo", "doctor", "clerical"] },
   { to: "/dashboard/analytics", icon: BarChart3, label: "Analytics", roles: ["admin", "research"] },
   { to: "/dashboard/staff", icon: Users, label: "Staff Management", roles: ["admin"] },
+  { to: "/dashboard/master-data", icon: Database, label: "Master Data", roles: ["admin", "jmo"] },
+  { to: "/dashboard/case-operations", icon: ClipboardList, label: "Case Operations", roles: ["admin", "jmo", "doctor"] },
+  { to: "/dashboard/medical-postmortem", icon: Activity, label: "Medical & Postmortem", roles: ["admin", "jmo", "doctor"] },
+  { to: "/dashboard/evidence-lab", icon: Microscope, label: "Evidence & Lab", roles: ["admin", "jmo", "doctor", "lab"] },
+  { to: "/dashboard/reports-audit", icon: Gavel, label: "Reports & Audit", roles: ["admin", "jmo"] },
   { to: "/dashboard/settings", icon: Settings, label: "System Settings", roles: ["admin"] },
 ];
 
