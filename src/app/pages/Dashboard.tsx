@@ -9,7 +9,7 @@ export function Dashboard() {
   const [userRole, setUserRole] = useState<string>("admin");
 
   useEffect(() => {
-    const role = sessionStorage.getItem("userRole") || "admin";
+    const role = localStorage.getItem("userRole") || "admin";
     setUserRole(role);
   }, []);
 
