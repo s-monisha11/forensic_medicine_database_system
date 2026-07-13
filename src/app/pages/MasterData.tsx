@@ -10,19 +10,19 @@ const REFERENCE_TABLES = [
 
 // Mock data generator for reference tables
 const mockDataMap: Record<string, any[]> = {
-  Person: [{ id: 1, full_name: "John Doe", nic_passport: "123456789V", gender: "Male", phone: "0771234567" }],
-  CaseType: [{ id: 1, type_name: "Clinical", description: "Clinical Examination" }, { id: 2, type_name: "Autopsy", description: "Postmortem Examination" }],
-  CaseStatus: [{ id: 1, status_name: "Pending", description: "Case is pending" }, { id: 2, status_name: "Closed", description: "Case is closed" }],
-  PoliceStation: [{ id: 1, station_name: "Colombo Central", contact_no: "0112345678", area: "Colombo" }],
-  Court: [{ id: 1, court_name: "High Court Colombo", court_type: "High Court", location: "Colombo" }],
-  Department: [{ id: 1, department_name: "Forensic Medicine", office_location: "Main Building" }],
-  StaffRole: [{ id: 1, role_name: "JMO", description: "Judicial Medical Officer" }],
-  UserRole: [{ id: 1, role_name: "Admin", permission_level: 1 }],
-  ExaminationType: [{ id: 1, type_name: "External", description: "External Examination" }],
-  EvidenceType: [{ id: 1, type_name: "Biological", description: "Blood, Tissue, etc." }],
-  LabTest: [{ id: 1, test_name: "Toxicology Screen", lab_section: "Toxicology", description: "Basic tox screen" }],
-  ReportType: [{ id: 1, type_name: "Postmortem Report", description: "PMR" }],
-  ReportStatus: [{ id: 1, status_name: "Draft", description: "Report in draft state" }]
+  Person: [],
+  CaseType: [],
+  CaseStatus: [],
+  PoliceStation: [],
+  Court: [],
+  Department: [],
+  StaffRole: [],
+  UserRole: [],
+  ExaminationType: [],
+  EvidenceType: [],
+  LabTest: [],
+  ReportType: [],
+  ReportStatus: []
 };
 
 export function MasterData() {

@@ -7,10 +7,10 @@ const MEDICAL_TABLES = [
 ];
 
 const mockDataMap: Record<string, any[]> = {
-  Examination: [{ examination_id: 1, exam_date: "2026-07-10", findings_summary: "Multiple contusions" }],
-  Injury: [{ injury_id: 1, injury_type: "Contusion", body_location: "Left Arm", severity: "Moderate" }],
-  Postmortem: [{ postmortem_id: 1, autopsy_date: "2026-07-11", summary: "Completed external exam" }],
-  CauseOfDeath: [{ cod_id: 1, immediate_cause: "Asphyxia", manner_of_death: "Pending Investigation" }]
+  Examination: [],
+  Injury: [],
+  Postmortem: [],
+  CauseOfDeath: []
 };
 
 export function MedicalPostmortem() {
