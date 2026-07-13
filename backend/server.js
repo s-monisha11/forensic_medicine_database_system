@@ -10,14 +10,16 @@ import evidenceRoutes from './routes/evidenceRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
-import laboratoryRoutes from './routes/laboratoryRoutes.js';
-import auditRoutes from './routes/auditRoutes.js';
-import { authenticate } from './middleware.js';
+import { seedDatabase } from './seed.js';
+
+import { authenticateToken } from './middleware.js';
 
 dotenv.config();
 const app = express();
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3000').split(',');
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+
+// Seed database on startup
+await seedDatabase();
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true }));
 app.use(express.json());
 
 // Health check
@@ -25,8 +27,10 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', system: 'Forensic 
 
 // Routes
 app.use('/api/auth', authRoutes);
-// All operational data is medico-legal information and therefore requires login.
-app.use('/api', authenticate);
+
+// Apply authenticateToken middleware to all other endpoints
+app.use('/api', authenticateToken);
+
 app.use('/api/patients', patientRoutes);
 app.use('/api/cases', caseRoutes);
 app.use('/api/postmortems', postmortemRoutes);
@@ -35,14 +39,6 @@ app.use('/api/evidence', evidenceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/staff', staffRoutes);
-app.use('/api/laboratory-tests', laboratoryRoutes);
-app.use('/api/audit-logs', auditRoutes);
-
-app.use((req, res) => res.status(404).json({ message: 'API endpoint not found' }));
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ message: 'Unexpected server error' });
-});
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`API running on http://localhost:${port}`));

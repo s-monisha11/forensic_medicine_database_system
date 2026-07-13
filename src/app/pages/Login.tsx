@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { FileText, Lock, User, ArrowLeft } from "lucide-react";
 import { api } from "../../services/api";
@@ -12,16 +12,22 @@ export function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (window.location.search.includes("expired=true")) {
+      setError("Your session expired. Please log in again.");
+    }
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
       const data = await api.login({ username, password, role });
-      sessionStorage.setItem("token", data.token);
-      sessionStorage.setItem("userRole", data.user.role);
-      sessionStorage.setItem("username", data.user.username);
-      sessionStorage.setItem("fullName", data.user.fullName);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userRole", data.user.role);
+      localStorage.setItem("username", data.user.username);
+      localStorage.setItem("fullName", data.user.fullName);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed. Please check your credentials.");
