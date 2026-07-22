@@ -10,9 +10,15 @@ import evidenceRoutes from './routes/evidenceRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
+import { seedDatabase } from './seed.js';
+
+import { authenticateToken } from './middleware.js';
 
 dotenv.config();
 const app = express();
+
+// Seed database on startup
+await seedDatabase();
 app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true }));
 app.use(express.json());
 
@@ -21,6 +27,10 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', system: 'Forensic 
 
 // Routes
 app.use('/api/auth', authRoutes);
+
+// Apply authenticateToken middleware to all other endpoints
+app.use('/api', authenticateToken);
+
 app.use('/api/patients', patientRoutes);
 app.use('/api/cases', caseRoutes);
 app.use('/api/postmortems', postmortemRoutes);

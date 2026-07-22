@@ -24,14 +24,14 @@ export function Navbar({ toggleSidebar, darkMode, toggleDarkMode }: NavbarProps)
   const [userRole, setUserRole] = useState("Staff");
 
   useEffect(() => {
-    const storedUsername = sessionStorage.getItem("username");
-    const storedRole = sessionStorage.getItem("userRole");
+    const storedUsername = localStorage.getItem("username");
+    const storedRole = localStorage.getItem("userRole");
     if (storedUsername) setUsername(storedUsername);
     if (storedRole) setUserRole(roleDisplayNames[storedRole] || "Staff");
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.clear();
+    localStorage.clear();
     navigate("/");
   };
 

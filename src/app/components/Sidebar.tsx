@@ -52,7 +52,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const [navItems, setNavItems] = useState<NavItem[]>([]);
 
   useEffect(() => {
-    const role = sessionStorage.getItem("userRole") || "admin";
+    const role = localStorage.getItem("userRole") || "admin";
     setUserRole(role);
     const filteredItems = allNavItems.filter((item) => item.roles.includes(role));
     setNavItems(filteredItems);

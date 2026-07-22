@@ -1,15 +1,26 @@
 const API_BASE_URL = '/api';
 
 export async function apiRequest(path: string, options: RequestInit = {}) {
-  const token = sessionStorage.getItem('token');
+  const token = localStorage.getItem('token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    let cleanToken = token;
+    if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+      cleanToken = cleanToken.slice(1, -1);
+    }
+    headers.Authorization = cleanToken.startsWith('Bearer ') ? cleanToken : `Bearer ${cleanToken}`;
   }
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+
+  if (response.status === 401 && path !== '/auth/login' && path !== '/auth/signup') {
+    localStorage.clear();
+    window.location.href = '/login?expired=true';
+    throw new Error('Your session expired. Please log in again.');
+  }
+
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.message || 'API request failed');
